@@ -117,7 +117,12 @@ public class Main extends JavaPlugin {
             return;
         }
 
-        Bukkit.getScheduler().runTaskTimerAsynchronously(this, this::flushDirtyBalances, periodTicks, periodTicks);
+        if (isFolia()) {
+            GlobalRegionScheduler scheduler = Bukkit.getGlobalRegionScheduler();
+            scheduler.runAtFixedRate(this, task -> flushDirtyBalances(), periodTicks, periodTicks);
+        } else {
+            Bukkit.getScheduler().runTaskTimerAsynchronously(this, this::flushDirtyBalances, periodTicks, periodTicks);
+        }
     }
 
     public void flushDirtyBalances() {
