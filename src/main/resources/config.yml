@@ -7,3 +7,4 @@ crystal-reward:
   min: 3
   max: 7
 afk-farm-enabled: true
+balance-autosave-interval-ticks: 600
