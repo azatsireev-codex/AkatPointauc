@@ -1,0 +1,9 @@
+pointauc-token: "Bearer 0fc5b54d-7c6d-4e0e-bb08-86b11548e41b"
+allowed-bid-amounts:
+  - 1000
+  - 5000
+  - 10000
+crystal-reward:
+  min: 3
+  max: 7
+afk-farm-enabled: true

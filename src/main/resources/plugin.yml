@@ -1,0 +1,27 @@
+name: AkatPointauc
+version: 1.0
+main: net.akat.Main
+api-version: 1.21
+folia-supported: true
+depend:
+  - packetevents
+  - PlaceholderAPI
+commands:
+  bid:
+    usage: /bid <amount> <message>
+    description: Send a bid to the auction
+  giftclaim:
+    usage: /giftclaim
+    description: Gift
+  toggleauction:
+    description: Auc toggle
+    usage: /toggleauction
+  bidamount:
+    description: manage cost
+    usage: /<command> <add|remove|list> [сумма]
+  reloadpointauc:
+    description: Pointauc reload
+    usage: /<command>
+  crystal:
+    description: Manage crystals (add/remove/list/reload)
+    usage: /crystal <add|remove|list|reload>
