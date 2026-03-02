@@ -26,6 +26,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
+import java.util.UUID;
 
 public class Main extends JavaPlugin {
 
@@ -77,6 +78,8 @@ public class Main extends JavaPlugin {
             Bukkit.getScheduler().runTaskTimerAsynchronously(this, new BidCheckerTask(bidManager, balanceManager), 100L, 100L);
         }
 
+        startBalanceAutoSave();
+
         getServer().getPluginManager().registerEvents(new PlayerListener(), this);
         getServer().getPluginManager().registerEvents(new CrystalClickListener(), this);
 
@@ -103,10 +106,35 @@ public class Main extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        flushAllBalances();
+        database.disconnect();
+    }
+
+    private void startBalanceAutoSave() {
+        long periodTicks = getConfig().getLong("balance-autosave-interval-ticks", 600L);
+        if (periodTicks <= 0) {
+            getLogger().warning("Автосохранение баланса отключено (balance-autosave-interval-ticks <= 0)");
+            return;
+        }
+
+        if (isFolia()) {
+            GlobalRegionScheduler scheduler = Bukkit.getGlobalRegionScheduler();
+            scheduler.runAtFixedRate(this, task -> flushDirtyBalances(), periodTicks, periodTicks);
+        } else {
+            Bukkit.getScheduler().runTaskTimerAsynchronously(this, this::flushDirtyBalances, periodTicks, periodTicks);
+        }
+    }
+
+    public void flushDirtyBalances() {
+        for (UUID uuid : balanceManager.consumeDirtyBalances()) {
+            database.save(uuid, balanceManager.getPoints(uuid));
+        }
+    }
+
+    public void flushAllBalances() {
         for (var entry : balanceManager.balances.entrySet()) {
             database.save(entry.getKey(), entry.getValue());
         }
-        database.disconnect();
     }
 
     public static boolean isFolia() {

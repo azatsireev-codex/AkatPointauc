@@ -16,7 +16,7 @@ public class PlayerListener implements Listener {
         var uuid = p.getUniqueId();
 
         int points = Main.instance.database.load(uuid);
-        Main.instance.balanceManager.setPoints(uuid, points);
+        Main.instance.balanceManager.setPoints(uuid, points, false);
         Main.instance.giftManager.enableFarming(uuid);
         Main.instance.giftManager.addPlayerToGiftTime(uuid);
         Main.instance.giftManager.addPlayerToPointsTime(uuid);

@@ -7,3 +7,17 @@ crystal-reward:
   min: 3
   max: 7
 afk-farm-enabled: true
+balance-autosave-interval-ticks: 600
+
+database:
+  # postgresql | sqlite
+  type: postgresql
+  postgresql:
+    host: "31.57.34.237"
+    port: "5432"
+    name: "pointauc"
+    username: "pointauc_user"
+    password: "$8jZeJyHisphWWpPQ_F6"
+  sqlite:
+    # Relative to plugin data folder
+    file: "test/pointauc.db"

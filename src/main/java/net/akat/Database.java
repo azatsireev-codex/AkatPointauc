@@ -1,37 +1,67 @@
 package net.akat;
 
-import org.postgresql.util.PSQLException;
-
+import java.io.File;
 import java.sql.*;
+import java.util.Locale;
 import java.util.UUID;
 
 public class Database {
     private Connection connection;
-    private final String HOST = "31.57.34.237";
-    private final String PORT = "5432";
-    private final String DB_NAME = "pointauc";
-    private final String USERNAME = "pointauc_user";
-    private final String PASSWORD = "$8jZeJyHisphWWpPQ_F6";
 
     private final Object lock = new Object();
+    private DbType dbType = DbType.POSTGRESQL;
+
+    private String host;
+    private String port;
+    private String dbName;
+    private String username;
+    private String password;
+    private String sqliteFile;
 
     public void connect() {
+        loadConfig();
+
         try {
-            Class.forName("org.postgresql.Driver");
-            String url = "jdbc:postgresql://" + HOST + ":" + PORT + "/" + DB_NAME;
-            connection = DriverManager.getConnection(url, USERNAME, PASSWORD);
+            if (dbType == DbType.SQLITE) {
+                Class.forName("org.sqlite.JDBC");
+                File sqliteDb = new File(Main.getInstance().getDataFolder(), sqliteFile);
+                File parent = sqliteDb.getParentFile();
+                if (parent != null && !parent.exists()) {
+                    parent.mkdirs();
+                }
+                String url = "jdbc:sqlite:" + sqliteDb.getAbsolutePath();
+                connection = DriverManager.getConnection(url);
+                Main.getInstance().getLogger().info("✅ SQLite подключен успешно: " + sqliteDb.getAbsolutePath());
+            } else {
+                Class.forName("org.postgresql.Driver");
+                String url = "jdbc:postgresql://" + host + ":" + port + "/" + dbName;
+                connection = DriverManager.getConnection(url, username, password);
+                Main.getInstance().getLogger().info("✅ PostgreSQL подключен успешно!");
+            }
 
             connection.setAutoCommit(true);
-
-            Main.getInstance().getLogger().info("✅ PostgreSQL подключен успешно!");
             createTables();
         } catch (ClassNotFoundException e) {
-            Main.getInstance().getLogger().severe("❌ PostgreSQL JDBC Driver not found!");
+            Main.getInstance().getLogger().severe("❌ JDBC Driver not found for: " + dbType.name());
             e.printStackTrace();
         } catch (SQLException e) {
-            Main.getInstance().getLogger().severe("❌ Ошибка подключения к PostgreSQL:");
+            Main.getInstance().getLogger().severe("❌ Ошибка подключения к БД (" + dbType.name() + "):");
             e.printStackTrace();
         }
+    }
+
+    private void loadConfig() {
+        var config = Main.getInstance().getConfig();
+        String configuredType = config.getString("database.type", "postgresql").toLowerCase(Locale.ROOT);
+        dbType = configuredType.equals("sqlite") ? DbType.SQLITE : DbType.POSTGRESQL;
+
+        host = config.getString("database.postgresql.host", "31.57.34.237");
+        port = config.getString("database.postgresql.port", "5432");
+        dbName = config.getString("database.postgresql.name", "pointauc");
+        username = config.getString("database.postgresql.username", "pointauc_user");
+        password = config.getString("database.postgresql.password", "");
+
+        sqliteFile = config.getString("database.sqlite.file", "test/pointauc.db");
     }
 
     private Connection getValidConnection() throws SQLException {
@@ -47,12 +77,18 @@ public class Database {
 
     private void reconnect() throws SQLException {
         try {
-            String url = "jdbc:postgresql://" + HOST + ":" + PORT + "/" + DB_NAME;
-            connection = DriverManager.getConnection(url, USERNAME, PASSWORD);
+            if (dbType == DbType.SQLITE) {
+                File sqliteDb = new File(Main.getInstance().getDataFolder(), sqliteFile);
+                String url = "jdbc:sqlite:" + sqliteDb.getAbsolutePath();
+                connection = DriverManager.getConnection(url);
+            } else {
+                String url = "jdbc:postgresql://" + host + ":" + port + "/" + dbName;
+                connection = DriverManager.getConnection(url, username, password);
+            }
             connection.setAutoCommit(true);
-            Main.getInstance().getLogger().info("✅ Переподключение к PostgreSQL успешно!");
+            Main.getInstance().getLogger().info("✅ Переподключение к БД успешно (" + dbType.name() + ")!");
         } catch (SQLException e) {
-            Main.getInstance().getLogger().severe("❌ Ошибка переподключения к PostgreSQL:");
+            Main.getInstance().getLogger().severe("❌ Ошибка переподключения к БД:");
             throw e;
         }
     }
@@ -100,20 +136,17 @@ public class Database {
         while (attempt < maxRetries) {
             try {
                 return callable.call();
-            } catch (PSQLException e) {
+            } catch (SQLException e) {
                 attempt++;
-                if (e.getMessage().contains("This connection has been closed") && attempt < maxRetries) {
-                    Main.getInstance().getLogger().warning("Соединение разорвано, попытка " + attempt + "/" + maxRetries);
+                if (attempt < maxRetries) {
+                    Main.getInstance().getLogger().warning("Ошибка БД, попытка " + attempt + "/" + maxRetries + ": " + e.getMessage());
                     try {
-                        Thread.sleep(1000 * attempt);
+                        Thread.sleep(1000L * attempt);
                     } catch (InterruptedException ie) {
                         Thread.currentThread().interrupt();
                     }
                     continue;
                 }
-                e.printStackTrace();
-                break;
-            } catch (SQLException e) {
                 e.printStackTrace();
                 break;
             }
@@ -169,5 +202,10 @@ public class Database {
             }
             return null;
         });
+    }
+
+    private enum DbType {
+        POSTGRESQL,
+        SQLITE
     }
 }
